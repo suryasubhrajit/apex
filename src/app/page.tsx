@@ -79,13 +79,16 @@ export default function Home() {
   const [currentDecision, setCurrentDecision] = useState<RefundDecision | undefined>();
   const [allSessions, setAllSessions]       = useState<any[]>([]);
 
-  // Load persisted settings
+  // Load persisted settings & ensure clean CRM state for video recording
   useEffect(() => {
     if (typeof window === "undefined") return;
     const p = localStorage.getItem("APEX_AI_PROVIDER");
     const k = localStorage.getItem("APEX_AI_API_KEY");
     if (p) setProvider(p);
     if (k) setApiKey(k);
+
+    // Reset CRM Database on initial mount so all orders are in clean PENDING state for video demo
+    fetch("/api/reset", { method: "POST" }).catch(console.error);
   }, []);
 
   const handleSendMessage = async (ticketId: string, query: string, isHumanTakeover: boolean) => {

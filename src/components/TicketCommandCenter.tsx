@@ -46,6 +46,8 @@ const statusColors: Record<string, string> = {
 
 const MACROS = [
   { label: "✅ Approve ORD-1001",    query: "I bought headphones in Order #ORD-1001 10 days ago. They are unopened. Can I get a full refund?" },
+  { label: "✅ Damaged ORD-1003",    query: "I want to request a refund for Order #ORD-1003 (damaged in transit)." },
+  { label: "⏳ Expired ORD-1004",    query: "I want to return the backpack from Order #ORD-1004 (delivered 53 days ago)." },
   { label: "❌ Final Sale ORD-1005", query: "I want to return my dress from Order #ORD-1005 (Clearance Final Sale)." },
   { label: "⚠️ Risk ORD-1006",      query: "I'd like to return my Smart Watch from Order #ORD-1006." },
   { label: "❌ Digital ORD-1007",    query: "I bought a Photo Editing License Key in Order #ORD-1007 by mistake." },

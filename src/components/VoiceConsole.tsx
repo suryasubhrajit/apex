@@ -467,9 +467,9 @@ export const VoiceConsole: React.FC<VoiceConsoleProps> = ({
                 <span className="text-[10px] font-bold text-[color:var(--text-caption)] uppercase tracking-wider block text-center">Quick Voice Input Presets</span>
                 <div className="flex flex-row items-center justify-center gap-2 overflow-x-auto w-full py-1">
                   {[
-                    "I want a refund for Order #ORD-1001",
+                    "I want a refund for Order #ORD-1003 (damaged)",
                     "I want to return Order #ORD-1005 (Final Sale)",
-                    "Is Order #ORD-1011 delivered yet?"
+                    "I want to return Order #ORD-1004 (delivered 53d ago)"
                   ].map((preset, i) => (
                     <button
                       key={i}
