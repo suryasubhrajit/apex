@@ -33,6 +33,7 @@ interface TicketCommandCenterProps {
   activeTicketId: string;
   onSelectTicket: (ticketId: string) => void;
   onSendMessage: (ticketId: string, query: string, isHumanTakeover: boolean) => Promise<void>;
+  onResetTicket?: (ticketId: string) => void;
   isLoading: boolean;
   onInspectTelemetry: (steps: ReasoningStep[]) => void;
 }
@@ -61,7 +62,7 @@ const TICKET_MACROS: Record<string, Array<{ label: string; query: string }>> = {
 };
 
 export const TicketCommandCenter: React.FC<TicketCommandCenterProps> = ({
-  tickets, activeTicketId, onSelectTicket, onSendMessage, isLoading, onInspectTelemetry
+  tickets, activeTicketId, onSelectTicket, onSendMessage, onResetTicket, isLoading, onInspectTelemetry
 }) => {
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [inputText, setInputText] = useState("");
@@ -167,8 +168,18 @@ export const TicketCommandCenter: React.FC<TicketCommandCenterProps> = ({
             <p className="text-[11px] text-[color:var(--text-muted)] truncate">{activeTicket.subject}</p>
           </div>
 
-          {/* Supervisor Human Takeover Switch */}
-          <div className="flex items-center gap-3">
+          {/* Supervisor Human Takeover Switch & Ticket Reset Button */}
+          <div className="flex items-center gap-2">
+            {onResetTicket && (
+              <button
+                onClick={() => onResetTicket(activeTicket.id)}
+                className="btn btn-ghost btn-sm text-[10px] py-1 px-2.5 flex items-center gap-1.5"
+                title="Reset this ticket back to OPEN and clear order refund state for video testing"
+              >
+                <RefreshCcw size={11} className="text-[color:var(--accent)]" />
+                <span>Reset Ticket</span>
+              </button>
+            )}
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md card">
               <span className="text-xs font-medium text-[color:var(--text-secondary)]">AI Agent</span>
               <button
