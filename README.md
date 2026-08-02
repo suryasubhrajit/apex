@@ -183,8 +183,3 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to launch th
 - **Vercel Serverless Configurations**: Server routes (`/api/chat`, `/api/tts`, `/api/reset`) export `maxDuration = 30` and `dynamic = "force-dynamic"` to eliminate serverless timeout crashes.
 - **Zero Client Secret Exposure**: API keys (`GEMINI_API_KEY`, `OPENAI_API_KEY`) are kept strictly server-side without `NEXT_PUBLIC_` prefixes.
 - **Graceful Error Fallbacks**: If external API limits are reached, the system gracefully falls back to the local autonomous reasoning engine with `HTTP 200 OK`.
-
----
-
-## 📜 License
-Licensed under the [MIT License](LICENSE).
