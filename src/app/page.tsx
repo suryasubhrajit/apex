@@ -11,6 +11,7 @@ import { SettingsPanel } from "@/components/SettingsPanel";
 import { CRM_DATABASE } from "@/data/crm-data";
 import { ReasoningStep, RefundDecision } from "@/lib/agent/tools";
 
+// All tickets start with EMPTY messages[] — macros fire the FIRST message cleanly with NO duplicates
 const INITIAL_TICKETS: TicketItem[] = [
   {
     id: "TCK-1001",
@@ -19,16 +20,9 @@ const INITIAL_TICKETS: TicketItem[] = [
     order: CRM_DATABASE[0].orders[0],
     status: "OPEN",
     priority: "HIGH",
-    subject: "Refund request – Noise-Canceling Headphones (ORD-1001)",
+    subject: "Standard Refund – Headphones ORD-1001 (10d, Unopened)",
     createdAt: new Date().toISOString(),
-    messages: [
-      {
-        id: "m-init-1",
-        sender: "user",
-        text: "Hi, I bought headphones in Order #ORD-1001 10 days ago. They are still unopened. Can I get a full refund?",
-        timestamp: new Date().toISOString()
-      }
-    ]
+    messages: []
   },
   {
     id: "TCK-1003",
@@ -37,16 +31,9 @@ const INITIAL_TICKETS: TicketItem[] = [
     order: CRM_DATABASE[2].orders[0],
     status: "OPEN",
     priority: "HIGH",
-    subject: "Damaged item claim – Ceramic Coffee Set (ORD-1003)",
+    subject: "Damaged Item Claim – Ceramic Coffee Set ORD-1003",
     createdAt: new Date().toISOString(),
-    messages: [
-      {
-        id: "m-init-3",
-        sender: "user",
-        text: "My Order #ORD-1003 arrived completely shattered and damaged in transit. I want a refund please.",
-        timestamp: new Date().toISOString()
-      }
-    ]
+    messages: []
   },
   {
     id: "TCK-1004",
@@ -55,16 +42,9 @@ const INITIAL_TICKETS: TicketItem[] = [
     order: CRM_DATABASE[3].orders[0],
     status: "OPEN",
     priority: "LOW",
-    subject: "Return request – Waterproof Backpack 53d (ORD-1004)",
+    subject: "Policy Denial – Expired 30d Window (53d elapsed) ORD-1004",
     createdAt: new Date().toISOString(),
-    messages: [
-      {
-        id: "m-init-4",
-        sender: "user",
-        text: "I'd like to return the backpack from Order #ORD-1004. It was delivered 53 days ago.",
-        timestamp: new Date().toISOString()
-      }
-    ]
+    messages: []
   },
   {
     id: "TCK-1005",
@@ -73,16 +53,9 @@ const INITIAL_TICKETS: TicketItem[] = [
     order: CRM_DATABASE[4].orders[0],
     status: "OPEN",
     priority: "MEDIUM",
-    subject: "Clearance item return inquiry (ORD-1005)",
+    subject: "Policy Denial – Final Sale / Clearance Item ORD-1005",
     createdAt: new Date().toISOString(),
-    messages: [
-      {
-        id: "m-init-5",
-        sender: "user",
-        text: "I want to return the designer dress from Order #ORD-1005 (Clearance Final Sale).",
-        timestamp: new Date().toISOString()
-      }
-    ]
+    messages: []
   },
   {
     id: "TCK-1006",
@@ -91,16 +64,9 @@ const INITIAL_TICKETS: TicketItem[] = [
     order: CRM_DATABASE[5].orders[0],
     status: "OPEN",
     priority: "HIGH",
-    subject: "Smart Watch return – High-risk account alert (ORD-1006)",
+    subject: "High-Risk Escalation – Fraud Alert ORD-1006",
     createdAt: new Date().toISOString(),
-    messages: [
-      {
-        id: "m-init-6",
-        sender: "user",
-        text: "I'd like to return my Smart Fitness Watch from Order #ORD-1006.",
-        timestamp: new Date().toISOString()
-      }
-    ]
+    messages: []
   },
   {
     id: "TCK-1007",
@@ -109,16 +75,9 @@ const INITIAL_TICKETS: TicketItem[] = [
     order: CRM_DATABASE[6].orders[0],
     status: "OPEN",
     priority: "LOW",
-    subject: "Digital Software License key return (ORD-1007)",
+    subject: "Policy Denial – Non-Refundable Digital License ORD-1007",
     createdAt: new Date().toISOString(),
-    messages: [
-      {
-        id: "m-init-7",
-        sender: "user",
-        text: "I bought a Photo Editing License Key in Order #ORD-1007 by mistake and want to return it.",
-        timestamp: new Date().toISOString()
-      }
-    ]
+    messages: []
   },
   {
     id: "TCK-1010",
@@ -127,16 +86,9 @@ const INITIAL_TICKETS: TicketItem[] = [
     order: CRM_DATABASE[9].orders[0],
     status: "OPEN",
     priority: "MEDIUM",
-    subject: "VIP member return request 38d (ORD-1010)",
+    subject: "VIP Grace Window – 38d Return Request ORD-1010",
     createdAt: new Date().toISOString(),
-    messages: [
-      {
-        id: "m-init-10",
-        sender: "user",
-        text: "I am a VIP member requesting a refund for Order #ORD-1010 (delivered 38 days ago).",
-        timestamp: new Date().toISOString()
-      }
-    ]
+    messages: []
   }
 ];
 
@@ -145,45 +97,37 @@ export default function Home() {
   const [provider, setProvider]     = useState<string>("gemini");
   const [apiKey, setApiKey]         = useState<string>("");
   const [isLoading, setIsLoading]   = useState<boolean>(false);
-
-  const [tickets, setTickets] = useState<TicketItem[]>(INITIAL_TICKETS);
+  const [tickets, setTickets]       = useState<TicketItem[]>(INITIAL_TICKETS);
   const [activeTicketId, setActiveTicketId] = useState<string>("TCK-1001");
   const [currentSteps, setCurrentSteps]     = useState<ReasoningStep[]>([]);
   const [currentDecision, setCurrentDecision] = useState<RefundDecision | undefined>();
-  const [allSessions, setAllSessions]       = useState<any[]>([]);
+  const [allSessions, setAllSessions] = useState<any[]>([]);
 
-  // Load persisted settings & ensure clean CRM state for video recording
   useEffect(() => {
     if (typeof window === "undefined") return;
     const p = localStorage.getItem("APEX_AI_PROVIDER");
     const k = localStorage.getItem("APEX_AI_API_KEY");
     if (p) setProvider(p);
     if (k) setApiKey(k);
-
-    // Reset CRM Database on initial mount so all orders are in clean PENDING state for video demo
+    // Ensure clean CRM state on every page load
     fetch("/api/reset", { method: "POST" }).catch(console.error);
   }, []);
 
+  // Reset a single ticket back to clean OPEN state + reset CRM database
   const handleResetTicket = async (ticketId: string) => {
-    try {
-      await fetch("/api/reset", { method: "POST" });
-    } catch {}
-
+    await fetch("/api/reset", { method: "POST" }).catch(console.error);
     const initial = INITIAL_TICKETS.find(t => t.id === ticketId);
     if (initial) {
       setTickets(prev => prev.map(t => t.id !== ticketId ? t : {
         ...initial,
         status: "OPEN",
-        messages: [{
-          ...initial.messages[0],
-          timestamp: new Date().toISOString()
-        }]
+        messages: []
       }));
     }
   };
 
   const handleSendMessage = async (ticketId: string, query: string, isHumanTakeover: boolean) => {
-    // Append sender message
+    // Append the customer/human message once
     setTickets(prev => prev.map(t =>
       t.id !== ticketId ? t : {
         ...t,
@@ -244,21 +188,19 @@ export default function Home() {
     setActiveTab("telemetry");
   };
 
-  const activeTicket     = tickets.find(t => t.id === activeTicketId) || tickets[0];
-  const latestAgentMsg   = activeTicket?.messages.filter(m => m.sender === "agent").pop()?.text;
-  const openTicketsCount = tickets.filter(t => t.status !== "RESOLVED").length;
+  const activeTicket   = tickets.find(t => t.id === activeTicketId) || tickets[0];
+  const latestAgentMsg = activeTicket?.messages.filter(m => m.sender === "agent").pop()?.text;
+  const openCount      = tickets.filter(t => t.status !== "RESOLVED").length;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[color:var(--bg-base)] text-[color:var(--text-primary)]" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        openTicketsCount={openTicketsCount}
+        openTicketsCount={openCount}
         providerName={provider}
         hasApiKey={Boolean(apiKey)}
       />
-
-      {/* Main content — full height flex column */}
       <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
         {activeTab === "workspace" && (
           <TicketCommandCenter
