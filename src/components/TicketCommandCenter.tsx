@@ -2,12 +2,12 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import {
-  Send, Bot, User, ShieldCheck, ShieldX, AlertTriangle,
-  Sparkles, Terminal, ArrowRight, Zap, UserCheck, Package,
-  Clock, CheckCircle2, XCircle, ChevronRight, MoreHorizontal
+  Inbox, Send, User, CheckCircle2, AlertTriangle, ShieldAlert, Clock, RefreshCcw,
+  Sparkles, ToggleLeft, ToggleRight, ArrowRight, CornerDownRight, FileText, ChevronRight,
+  Eye, Check, XCircle, AlertCircle, Ban, DollarSign, Tag, ExternalLink, Bot
 } from "lucide-react";
+import { CustomerProfile, Order } from "@/data/crm-data";
 import { ReasoningStep, RefundDecision } from "@/lib/agent/tools";
-import { CRM_DATABASE, CustomerProfile, Order } from "@/data/crm-data";
 
 export interface TicketItem {
   id: string;
@@ -15,7 +15,7 @@ export interface TicketItem {
   customer: CustomerProfile;
   order: Order;
   status: "OPEN" | "PENDING_APPROVAL" | "ESCALATED" | "RESOLVED";
-  priority: "HIGH" | "MEDIUM" | "LOW";
+  priority: "LOW" | "MEDIUM" | "HIGH";
   subject: string;
   createdAt: string;
   messages: Array<{
@@ -44,15 +44,21 @@ const statusColors: Record<string, string> = {
   RESOLVED:         "badge-success",
 };
 
-const MACROS = [
-  { label: "✅ Approve ORD-1001",    query: "I bought headphones in Order #ORD-1001 10 days ago. They are unopened. Can I get a full refund?" },
-  { label: "✅ Damaged ORD-1003",    query: "I want to request a refund for Order #ORD-1003 (damaged in transit)." },
-  { label: "⏳ Expired ORD-1004",    query: "I want to return the backpack from Order #ORD-1004 (delivered 53 days ago)." },
-  { label: "❌ Final Sale ORD-1005", query: "I want to return my dress from Order #ORD-1005 (Clearance Final Sale)." },
-  { label: "⚠️ Risk ORD-1006",      query: "I'd like to return my Smart Watch from Order #ORD-1006." },
-  { label: "❌ Digital ORD-1007",    query: "I bought a Photo Editing License Key in Order #ORD-1007 by mistake." },
-  { label: "⭐ VIP ORD-1010",        query: "I am a VIP member requesting a refund for Order #ORD-1010 (38 days ago)." },
-];
+const TICKET_MACROS: Record<string, Array<{ label: string; query: string }>> = {
+  "TCK-1001": [
+    { label: "✅ Approve Refund ORD-1001", query: "I bought headphones in Order #ORD-1001 10 days ago. They are unopened. Can I get a full refund?" },
+    { label: "✅ Damaged Item ORD-1003", query: "I want to request a refund for Order #ORD-1003 (damaged in transit)." },
+    { label: "⭐ VIP Extended Window ORD-1010", query: "I am a VIP member requesting a refund for Order #ORD-1010 (38 days ago)." }
+  ],
+  "TCK-1005": [
+    { label: "❌ Deny Final Sale ORD-1005", query: "I want to return my dress from Order #ORD-1005 (Clearance Final Sale)." },
+    { label: "⏳ Deny Expired Window ORD-1004", query: "I want to return the backpack from Order #ORD-1004 (delivered 53 days ago)." },
+    { label: "❌ Deny Digital Software ORD-1007", query: "I bought a Photo Editing License Key in Order #ORD-1007 by mistake." }
+  ],
+  "TCK-1006": [
+    { label: "⚠️ Escalate High Risk ORD-1006", query: "I'd like to return my Smart Fitness Watch from Order #ORD-1006." }
+  ]
+};
 
 export const TicketCommandCenter: React.FC<TicketCommandCenterProps> = ({
   tickets, activeTicketId, onSelectTicket, onSendMessage, isLoading, onInspectTelemetry
@@ -74,12 +80,20 @@ export const TicketCommandCenter: React.FC<TicketCommandCenterProps> = ({
 
   const filteredTickets = tickets.filter(t => filterStatus === "ALL" || t.status === filterStatus);
 
+  const handleTicketSelect = async (id: string) => {
+    // Clean server CRM database state when switching tickets so refund evaluations are fresh
+    try { await fetch("/api/reset", { method: "POST" }); } catch {}
+    onSelectTicket(id);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() || isLoading) return;
     onSendMessage(activeTicket.id, inputText.trim(), isHumanTakeover);
     setInputText("");
   };
+
+  const currentMacros = TICKET_MACROS[activeTicket.id] || TICKET_MACROS["TCK-1001"];
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -108,248 +122,255 @@ export const TicketCommandCenter: React.FC<TicketCommandCenterProps> = ({
 
         {/* Ticket list */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {filteredTickets.map(t => (
-            <div
-              key={t.id}
-              onClick={() => onSelectTicket(t.id)}
-              className={`card-hover p-3 space-y-2 ${activeTicketId === t.id ? "active" : ""}`}
-            >
-              <div className="flex items-start justify-between gap-1">
-                <span className="text-[10px] font-mono text-[color:var(--accent)] font-semibold">{t.ticketNumber}</span>
-                <span className={`badge ${statusColors[t.status]}`}>{t.status}</span>
+          {filteredTickets.map(t => {
+            const isActive = t.id === activeTicket.id;
+            return (
+              <div
+                key={t.id}
+                onClick={() => handleTicketSelect(t.id)}
+                className={`p-3 rounded-lg cursor-pointer transition-all border ${
+                  isActive
+                    ? "bg-[color:var(--accent-muted)] border-[color:var(--accent-border)] text-[color:var(--text-primary)]"
+                    : "bg-[color:var(--bg-base)] border-[color:var(--border-sub)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-elevated)]"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono text-[11px] font-bold text-[color:var(--accent)]">{t.ticketNumber}</span>
+                  <span className={`badge ${statusColors[t.status] || "badge-neutral"} text-[9px] uppercase px-1.5 py-0.5`}>
+                    {t.status}
+                  </span>
+                </div>
+                <div className="font-semibold text-xs truncate text-[color:var(--text-primary)]">{t.customer.name}</div>
+                <div className="text-[11px] text-[color:var(--text-muted)] truncate mb-1.5">{t.subject}</div>
+                <div className="flex items-center justify-between text-[10px] text-[color:var(--text-caption)] font-mono">
+                  <span>#{t.order.orderId}</span>
+                  <span className={t.customer.riskScore > 50 ? "text-[color:var(--danger)] font-bold" : "text-[color:var(--text-muted)]"}>
+                    Risk {t.customer.riskScore}/100
+                  </span>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-semibold text-[color:var(--text-primary)] truncate">{t.customer.name}</p>
-                <p className="text-[11px] text-[color:var(--text-muted)] truncate mt-0.5">{t.subject}</p>
-              </div>
-              <div className="flex items-center justify-between pt-1 border-t border-[color:var(--border-sub)]">
-                <span className="text-[10px] text-[color:var(--text-muted)]">#{t.order.orderId}</span>
-                <span className={`text-[10px] font-semibold ${t.customer.riskScore > 50 ? "text-[color:var(--danger)]" : "text-[color:var(--success)]"}`}>
-                  Risk {t.customer.riskScore}/100
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* ── Col 2: Conversation ──────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[color:var(--bg-base)]">
-        {/* Conversation header */}
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-[color:var(--border-main)] bg-[color:var(--bg-surface)] flex-shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-[color:var(--bg-overlay)] border border-[color:var(--border-main)] flex items-center justify-center text-xs font-bold text-[color:var(--text-secondary)] flex-shrink-0">
-              {customer?.name.charAt(0)}
+      {/* ── Col 2: Conversation & Co-Pilot ───────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 border-r border-[color:var(--border-main)] bg-[color:var(--bg-base)]">
+        {/* Ticket Topbar Header */}
+        <div className="px-5 py-3.5 border-b border-[color:var(--border-main)] bg-[color:var(--bg-surface)] flex items-center justify-between flex-shrink-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-mono text-xs font-bold text-[color:var(--accent)]">{activeTicket.ticketNumber}</span>
+              <span className="text-xs font-bold text-[color:var(--text-primary)] truncate">{activeTicket.customer.name}</span>
+              <span className="badge badge-accent text-[9px] px-1 py-0">{activeTicket.customer.memberTier}</span>
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-[color:var(--text-primary)] truncate">{customer?.name}</span>
-                <span className={`badge ${customer?.memberTier === "VIP" ? "badge-purple" : "badge-neutral"}`}>{customer?.memberTier}</span>
-              </div>
-              <p className="text-[11px] text-[color:var(--text-muted)] truncate">
-                {activeTicket?.ticketNumber} · {order?.orderId} · {order?.items[0]?.name}
-              </p>
-            </div>
+            <p className="text-[11px] text-[color:var(--text-muted)] truncate">{activeTicket.subject}</p>
           </div>
 
-          {/* Autonomous / Takeover toggle */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className={`text-[11px] font-medium ${isHumanTakeover ? "text-[color:var(--warning)]" : "text-[color:var(--text-muted)]"}`}>
-              {isHumanTakeover ? "Manual" : "AI Agent"}
-            </span>
-            <button
-              onClick={() => setIsHumanTakeover(!isHumanTakeover)}
-              className={`toggle-track ${isHumanTakeover ? "on" : "off"}`}
-              style={{ background: isHumanTakeover ? "var(--warning)" : undefined }}
-              aria-label="Toggle takeover"
-            >
-              <span className="toggle-thumb" />
-            </button>
-            <span className="text-[11px] text-[color:var(--text-muted)]">
-              {isHumanTakeover ? "Override" : "Auto"}
-            </span>
+          {/* Supervisor Human Takeover Switch */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md card">
+              <span className="text-xs font-medium text-[color:var(--text-secondary)]">AI Agent</span>
+              <button
+                onClick={() => setIsHumanTakeover(!isHumanTakeover)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  isHumanTakeover ? "bg-[color:var(--warning)]" : "bg-[color:var(--accent)]"
+                }`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                  isHumanTakeover ? "translate-x-4.5" : "translate-x-1"
+                }`} />
+              </button>
+              <span className="text-xs font-medium text-[color:var(--text-secondary)]">Auto</span>
+            </div>
           </div>
         </div>
 
-        {/* Macros bar */}
-        <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[color:var(--border-sub)] bg-[color:var(--bg-surface)] overflow-x-auto flex-shrink-0">
-          <span className="label flex-shrink-0">Macros:</span>
-          {MACROS.map((m, i) => (
+        {/* Dynamic Context-Aware Macro Quick Presets Bar */}
+        <div className="px-4 py-2 border-b border-[color:var(--border-sub)] bg-[color:var(--bg-elevated)] flex items-center gap-2 flex-shrink-0 overflow-x-auto">
+          <span className="text-[10px] font-bold text-[color:var(--text-caption)] uppercase tracking-wider whitespace-nowrap">Macros:</span>
+          {currentMacros.map((macro, idx) => (
             <button
-              key={i}
+              key={idx}
+              onClick={() => onSendMessage(activeTicket.id, macro.query, isHumanTakeover)}
               disabled={isLoading}
-              onClick={() => onSendMessage(activeTicket.id, m.query, isHumanTakeover)}
-              className="btn btn-ghost btn-sm flex-shrink-0"
-              style={{ fontSize: "10px", padding: "3px 8px" }}
+              className="btn btn-ghost btn-sm text-[11px] py-1 px-2.5 whitespace-nowrap flex-shrink-0"
             >
-              {m.label}
+              <Sparkles size={11} className="text-[color:var(--accent)]" />
+              <span>{macro.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {activeTicket?.messages.map(msg => (
-            <div
-              key={msg.id}
-              className={`flex gap-2.5 max-w-[75%] animate-slide-up ${msg.sender === "user" ? "ml-auto flex-row-reverse" : ""}`}
-            >
-              {/* Avatar */}
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${
-                msg.sender === "user"       ? "bg-[color:var(--bg-overlay)] text-[color:var(--text-secondary)]"
-                : msg.sender === "human_agent" ? "bg-[color:var(--warning-muted)] text-[color:var(--warning)]"
-                : "bg-[color:var(--accent)] text-white"
-              }`}>
-                {msg.sender === "user" ? <User size={10} /> : <Bot size={10} />}
-              </div>
-
-              <div className="space-y-1.5">
-                <div className={`px-3.5 py-2.5 rounded-lg text-xs leading-relaxed ${
-                  msg.sender === "user"
-                    ? "bg-[color:var(--accent)] text-white rounded-tr-none"
-                    : msg.sender === "human_agent"
-                    ? "bg-[color:var(--warning-muted)] border border-[color:var(--border-main)] text-[color:var(--text-primary)] rounded-tl-none"
-                    : "bg-[color:var(--bg-elevated)] border border-[color:var(--border-main)] text-[color:var(--text-primary)] rounded-tl-none"
-                }`}>
-                  {msg.text}
+        {/* Message Thread Stream */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 font-sans text-xs">
+          {activeTicket.messages.map((m) => {
+            const isUser = m.sender === "user";
+            const isHuman = m.sender === "human_agent";
+            return (
+              <div
+                key={m.id}
+                className={`flex flex-col gap-1 max-w-[85%] ${
+                  isUser ? "ml-auto items-end" : "mr-auto items-start"
+                }`}
+              >
+                <div className="flex items-center gap-1.5 text-[10px] text-[color:var(--text-caption)] font-mono">
+                  {isUser ? (
+                    <><span>Customer</span><User size={10} /></>
+                  ) : isHuman ? (
+                    <><span className="text-[color:var(--warning)] font-bold">Human Agent</span></>
+                  ) : (
+                    <><Bot size={10} className="text-[color:var(--accent)]" /><span>AI Agent</span></>
+                  )}
+                  <span>•</span>
+                  <span>{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
 
-                {/* Decision card */}
-                {msg.decision && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-[color:var(--bg-elevated)] border border-[color:var(--border-main)]">
-                    {msg.decision.status === "APPROVED" && (
-                      <span className="badge badge-success"><ShieldCheck size={10} /> APPROVED ${msg.decision.amountRefunded.toFixed(2)}</span>
-                    )}
-                    {msg.decision.status === "DENIED" && (
-                      <span className="badge badge-danger"><ShieldX size={10} /> DENIED</span>
-                    )}
-                    {msg.decision.status === "ESCALATED" && (
-                      <span className="badge badge-warning"><AlertTriangle size={10} /> ESCALATED</span>
-                    )}
-                    {msg.reasoningSteps && (
-                      <button
-                        onClick={() => onInspectTelemetry(msg.reasoningSteps!)}
-                        className="btn btn-ghost btn-sm ml-auto"
-                        style={{ fontSize: "10px", padding: "3px 8px" }}
-                      >
-                        <Terminal size={10} /> Logs ({msg.reasoningSteps.length})
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+                <div
+                  className={`p-3.5 rounded-xl border leading-relaxed ${
+                    isUser
+                      ? "bg-[color:var(--purple-muted)] border-purple-500/20 text-[color:var(--text-primary)] rounded-tr-none"
+                      : isHuman
+                      ? "bg-[color:var(--warning-muted)] border-amber-500/20 text-[color:var(--text-primary)] rounded-tl-none"
+                      : "bg-[color:var(--bg-surface)] border-[color:var(--border-main)] text-[color:var(--text-primary)] rounded-tl-none shadow-sm"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{m.text}</p>
 
-          {/* Loading */}
+                  {/* Inline Decision Receipt Card */}
+                  {m.decision && (
+                    <div className="mt-3 pt-3 border-t border-[color:var(--border-sub)] text-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`badge uppercase font-mono text-[9px] ${
+                          m.decision.status === "APPROVED" ? "badge-success" :
+                          m.decision.status === "DENIED" ? "badge-danger" : "badge-warning"
+                        }`}>
+                          {m.decision.status}
+                        </span>
+                        {m.decision.transactionId && (
+                          <span className="font-mono text-[10px] text-[color:var(--accent)]">{m.decision.transactionId}</span>
+                        )}
+                      </div>
+
+                      {m.decision.summary && (
+                        <p className="text-[11px] text-[color:var(--text-secondary)] font-medium">{m.decision.summary}</p>
+                      )}
+
+                      {/* Telemetry Inspect Button */}
+                      {m.reasoningSteps && m.reasoningSteps.length > 0 && (
+                        <button
+                          onClick={() => onInspectTelemetry(m.reasoningSteps!)}
+                          className="btn btn-ghost btn-sm text-[10px] py-1 px-2 text-[color:var(--accent)] mt-1"
+                        >
+                          <Eye size={11} /> Inspect Reasoning Telemetry ({m.reasoningSteps.length} Steps)
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
           {isLoading && (
-            <div className="flex gap-2.5 max-w-sm">
-              <div className="w-6 h-6 rounded-full bg-[color:var(--accent)] flex items-center justify-center flex-shrink-0">
-                <Bot size={10} className="text-white animate-spin" />
-              </div>
-              <div className="px-3.5 py-2.5 rounded-lg rounded-tl-none bg-[color:var(--bg-elevated)] border border-[color:var(--accent-border)] flex items-center gap-2">
-                <div className="flex gap-0.5">
-                  {[0,1,2].map(i => (
-                    <span key={i} className="wave-bar h-3" style={{ animationDelay: `${i * 0.15}s` }} />
-                  ))}
-                </div>
-                <span className="text-xs text-[color:var(--text-secondary)]">Evaluating policy rules...</span>
-              </div>
+            <div className="flex items-center gap-2 p-3 rounded-lg card text-xs text-[color:var(--warning)] animate-pulse max-w-xs">
+              <Bot size={14} />
+              <span>Evaluating refund policy & order history…</span>
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        <div className="px-4 py-3 border-t border-[color:var(--border-main)] bg-[color:var(--bg-surface)] flex-shrink-0">
-          <form onSubmit={handleSubmit} className="flex items-center gap-2">
-            <input
-              className="input flex-1"
-              value={inputText}
-              onChange={e => setInputText(e.target.value)}
-              disabled={isLoading}
-              placeholder={isHumanTakeover ? "Type manual supervisor response…" : "Type query or Order ID (e.g. 'Refund for ORD-1001')…"}
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !inputText.trim()}
-              className={`btn btn-primary flex-shrink-0 ${isHumanTakeover ? "bg-[color:var(--warning)]" : ""}`}
-            >
-              <Send size={13} />
-              {isHumanTakeover ? "Send" : "Run Agent"}
-            </button>
-          </form>
-        </div>
+        {/* Input Box Bar */}
+        <form onSubmit={handleSubmit} className="p-4 border-t border-[color:var(--border-main)] bg-[color:var(--bg-surface)] flex items-center gap-2 flex-shrink-0">
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder={isHumanTakeover ? "Type as Human Supervisor..." : "Type customer message or Order ID (e.g. 'Refund for ORD-1001')..."}
+            disabled={isLoading}
+            className="input-field flex-1 text-xs py-2 px-3"
+          />
+          <button type="submit" disabled={isLoading || !inputText.trim()} className="btn btn-primary px-4 py-2 flex items-center gap-1.5">
+            <Send size={13} /> Run Agent
+          </button>
+        </form>
       </div>
 
-      {/* ── Col 3: Customer 360 ──────────────────────────────── */}
-      <div className="w-[260px] flex-shrink-0 flex flex-col border-l border-[color:var(--border-main)] bg-[color:var(--bg-surface)] overflow-y-auto">
-        <div className="px-4 py-3 border-b border-[color:var(--border-sub)]">
-          <span className="label">Customer 360</span>
-        </div>
-
-        {customer && (
-          <div className="p-3 space-y-3">
-            {/* Identity */}
-            <div className="card p-3 space-y-2">
-              <div className="flex items-start justify-between">
-                <span className="text-[10px] font-mono text-[color:var(--accent)]">{customer.customerId}</span>
-                <span className={`badge ${customer.memberTier === "VIP" ? "badge-purple" : "badge-neutral"}`}>{customer.memberTier}</span>
+      {/* ── Col 3: Customer 360 Context Sidebar ──────────────── */}
+      <div className="w-[280px] flex-shrink-0 flex flex-col border-l border-[color:var(--border-main)] bg-[color:var(--bg-surface)] overflow-y-auto p-4 space-y-4">
+        {customer && order ? (
+          <>
+            {/* Customer Profile Card */}
+            <div className="card p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold text-[color:var(--accent)]">{customer.customerId}</span>
+                <span className="badge badge-accent text-[9px] uppercase px-1.5 py-0.5">{customer.memberTier}</span>
               </div>
               <div>
-                <p className="text-sm font-bold text-[color:var(--text-primary)]">{customer.name}</p>
-                <p className="text-[11px] text-[color:var(--text-muted)]">{customer.email}</p>
+                <h4 className="text-sm font-bold text-[color:var(--text-primary)]">{customer.name}</h4>
+                <p className="text-[11px] text-[color:var(--text-muted)] truncate">{customer.email}</p>
               </div>
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="surface-overlay rounded p-2 text-center">
-                  <p className="text-[10px] text-[color:var(--text-muted)]">Lifetime Value</p>
-                  <p className="text-xs font-bold text-[color:var(--success)]">${customer.totalSpent.toFixed(0)}</p>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[color:var(--border-sub)] font-mono text-[10px]">
+                <div className="p-2 rounded bg-[color:var(--bg-elevated)]">
+                  <span className="text-[color:var(--text-caption)] block">Total Spend</span>
+                  <span className="text-xs font-bold text-[color:var(--success)]">${customer.totalSpent.toFixed(2)}</span>
                 </div>
-                <div className="surface-overlay rounded p-2 text-center">
-                  <p className="text-[10px] text-[color:var(--text-muted)]">Fraud Risk</p>
-                  <p className={`text-xs font-bold ${customer.riskScore > 50 ? "text-[color:var(--danger)]" : "text-[color:var(--success)]"}`}>
+                <div className="p-2 rounded bg-[color:var(--bg-elevated)]">
+                  <span className="text-[color:var(--text-caption)] block">Fraud Risk</span>
+                  <span className={`text-xs font-bold ${customer.riskScore > 50 ? "text-[color:var(--danger)]" : "text-[color:var(--text-primary)]"}`}>
                     {customer.riskScore}/100
-                  </p>
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Order */}
-            {order && (
-              <div className="card p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-[color:var(--text-primary)]">#{order.orderId}</span>
-                  <span className="text-xs font-bold text-[color:var(--success)]">${order.totalAmount.toFixed(2)}</span>
+            {/* Order Details Card */}
+            <div className="card p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between border-b border-[color:var(--border-sub)] pb-2">
+                <span className="font-mono text-xs font-bold text-[color:var(--text-primary)]">#{order.orderId}</span>
+                <span className="font-mono text-xs font-bold text-[color:var(--success)]">${order.totalAmount.toFixed(2)}</span>
+              </div>
+              <div className="text-[11px] text-[color:var(--text-secondary)] space-y-1">
+                <p className="font-medium text-[color:var(--text-primary)]">{order.items[0]?.name}</p>
+                <div className="flex items-center justify-between text-[10px] text-[color:var(--text-caption)] font-mono">
+                  <span>Category: {order.items[0]?.category}</span>
+                  <span>Condition: {order.items[0]?.condition || "Unopened"}</span>
                 </div>
-                <p className="text-[11px] text-[color:var(--text-muted)]">
-                  Delivered {order.deliveryDate} <span className="text-[color:var(--text-caption)]">({daysElapsed}d ago)</span>
-                </p>
-                <p className="text-[11px] text-[color:var(--text-secondary)] truncate">
-                  {order.items[0]?.name}
-                </p>
-                <div className="space-y-1.5 pt-1 border-t border-[color:var(--border-sub)]">
-                  <span className="label">Policy Matrix</span>
-                  {[
-                    {
-                      label: "30-Day Window",
-                      pass: daysElapsed <= 30,
-                      note: daysElapsed <= 30 ? `${daysElapsed}d` : customer?.memberTier === "VIP" ? "VIP ext." : "Expired"
-                    },
-                    { label: "Final Sale",  pass: !order.items[0]?.isFinalSale,       note: order.items[0]?.isFinalSale ? "Final Sale" : "OK" },
-                    { label: "Digital Item", pass: order.items[0]?.category !== "Digital", note: order.items[0]?.category === "Digital" ? "Digital" : "OK" },
-                  ].map(({ label, pass, note }) => (
-                    <div key={label} className="flex items-center justify-between">
-                      <span className="text-[11px] text-[color:var(--text-muted)]">{label}</span>
-                      <span className={`text-[10px] font-semibold flex items-center gap-1 ${pass ? "text-[color:var(--success)]" : "text-[color:var(--danger)]"}`}>
-                        {pass ? <CheckCircle2 size={10} /> : <XCircle size={10} />} {note}
-                      </span>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between text-[10px] text-[color:var(--text-caption)] font-mono">
+                  <span>Delivered: {order.deliveryDate}</span>
+                  <span className="text-[color:var(--accent)] font-bold">{daysElapsed}d elapsed</span>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+
+            {/* Policy Rules Eligibility Checklist */}
+            <div className="card p-3.5 space-y-2 font-mono text-[10px]">
+              <span className="text-[10px] font-bold text-[color:var(--text-caption)] uppercase tracking-wider block">Policy Matrix Checklist</span>
+              
+              <div className="flex items-center justify-between py-1 border-b border-[color:var(--border-sub)]">
+                <span>30-Day Window</span>
+                <span className={daysElapsed <= 30 || (customer.memberTier === "VIP" && daysElapsed <= 45) ? "text-[color:var(--success)] font-bold flex items-center gap-1" : "text-[color:var(--danger)] font-bold flex items-center gap-1"}>
+                  {daysElapsed <= 30 ? <CheckCircle2 size={10} /> : <XCircle size={10} />} {daysElapsed}d
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1 border-b border-[color:var(--border-sub)]">
+                <span>Final Sale Item</span>
+                <span className={order.items[0]?.isFinalSale ? "text-[color:var(--danger)] font-bold flex items-center gap-1" : "text-[color:var(--success)] font-bold flex items-center gap-1"}>
+                  {order.items[0]?.isFinalSale ? <XCircle size={10} /> : <CheckCircle2 size={10} />} {order.items[0]?.isFinalSale ? "Final Sale" : "OK"}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <span>Fraud Risk Score</span>
+                <span className={customer.riskScore <= 75 ? "text-[color:var(--success)] font-bold flex items-center gap-1" : "text-[color:var(--danger)] font-bold flex items-center gap-1"}>
+                  {customer.riskScore <= 75 ? <CheckCircle2 size={10} /> : <ShieldAlert size={10} />} {customer.riskScore}/100
+                </span>
+              </div>
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   );
