@@ -189,21 +189,30 @@ input, textarea, select {
 }
 
 /* ─── Input ──────────────────────────────────────────────────────── */
-.input {
+.input, .input-field {
   width: 100%;
   background: var(--bg-base);
   color: var(--text-primary);
   border: 1px solid var(--border-main);
-  border-radius: 7px;
-  padding: 8px 12px;
+  border-radius: 8px;
+  padding: 9px 13px;
   font-size: 12px;
   font-family: inherit;
   outline: none;
-  transition: border-color 0.15s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
 }
-.input::placeholder { color: var(--text-caption); }
-.input:focus { border-color: var(--accent); }
-.input-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.input::placeholder, .input-field::placeholder { color: var(--text-muted); }
+.input:hover, .input-field:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--bg-surface);
+}
+.input:focus, .input-field:focus { 
+  border-color: var(--accent); 
+  box-shadow: 0 0 0 3px var(--accent-muted), inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  background: var(--bg-surface);
+}
+.input-mono, .input-field-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
 
 /* ─── Toggle ─────────────────────────────────────────────────────── */
 .toggle-track {

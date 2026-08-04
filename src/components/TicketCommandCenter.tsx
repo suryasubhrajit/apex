@@ -293,16 +293,25 @@ export const TicketCommandCenter: React.FC<TicketCommandCenterProps> = ({
         </div>
 
         {/* Input Box Bar */}
-        <form onSubmit={handleSubmit} className="p-4 border-t border-[color:var(--border-main)] bg-[color:var(--bg-surface)] flex items-center gap-2 flex-shrink-0">
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder={isHumanTakeover ? "Type as Human Supervisor..." : "Type customer message or Order ID (e.g. 'Refund for ORD-1001')..."}
-            disabled={isLoading}
-            className="input-field flex-1 text-xs py-2 px-3"
-          />
-          <button type="submit" disabled={isLoading || !inputText.trim()} className="btn btn-primary px-4 py-2 flex items-center gap-1.5">
+        <form onSubmit={handleSubmit} className="p-3.5 border-t border-[color:var(--border-main)] bg-[color:var(--bg-surface)] flex items-center gap-2.5 flex-shrink-0">
+          <div className="relative flex-1 flex items-center">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={isHumanTakeover ? "Type as Human Supervisor..." : "Type customer message or Order ID (e.g. 'Refund for ORD-1001')..."}
+              disabled={isLoading}
+              className="input-field flex-1 text-xs py-2.5 px-3.5 pr-10"
+            />
+            <kbd className="absolute right-3 hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-medium text-[color:var(--text-muted)] bg-[color:var(--bg-elevated)] border border-[color:var(--border-sub)] rounded select-none pointer-events-none">
+              ↵
+            </kbd>
+          </div>
+          <button 
+            type="submit" 
+            disabled={isLoading || !inputText.trim()} 
+            className="btn btn-primary px-4 py-2.5 flex items-center gap-1.5 text-xs font-semibold shadow-md shadow-indigo-500/20 active:scale-95 transition-transform"
+          >
             <Send size={13} /> Run Agent
           </button>
         </form>
